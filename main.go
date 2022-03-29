@@ -1,12 +1,13 @@
 package main
 
 import (
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 
-	"github.com/entrik/httpclient"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/sdwolfe32/trumail/api"
@@ -17,7 +18,7 @@ var (
 	// port defines the port used by the api server
 	port = getEnv("PORT", "8080")
 	// sourceAddr defines the address used on verifier
-	sourceAddr = getEnv("SOURCE_ADDR", "admin@gmail.com")
+	sourceAddr = getEnv("SOURCE_ADDR", "faraz@triggr.ai")
 )
 
 func main() {
@@ -41,15 +42,17 @@ func main() {
 // address retrieved via an API call on api.ipify.org
 func retrievePTR() string {
 	// Request the IP from ipify
-	ip, err := httpclient.GetString("https://api.ipify.org/")
+
+	resp, err := http.Get("https://api.ipify.org/")
 	if err != nil {
 		log.Fatal("Failed to retrieve public IP")
 	}
-
+	defer resp.Body.Close()
+	ip, err := io.ReadAll(resp.Body)
 	// Retrieve the PTR record for our IP and return without a trailing dot
-	names, err := net.LookupAddr(ip)
+	names, err := net.LookupAddr(string(ip))
 	if err != nil {
-		return ip
+		return string(ip)
 	}
 	return strings.TrimSuffix(names[0], ".")
 }
